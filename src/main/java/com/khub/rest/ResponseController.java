@@ -1,13 +1,12 @@
 package com.khub.rest;
 
-import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.AsyncFunction;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.SettableFuture;
 import com.khub.rest.dto.ResponseDto;
+import com.khub.rest.dto.ResponseListDto;
 import com.khub.rest.google.books.service.GoogleBooksService;
 import com.khub.rest.spotify.service.SpotifyService;
-import com.khub.rest.dto.ResponseListDto;
 import net.javacrumbs.futureconverter.springguava.FutureConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,13 +40,10 @@ public class ResponseController {
         this.googleBooksService = googleBooksService;
     }
 
-    @RequestMapping("/test" )
-    ListenableFuture response(@RequestParam(required = true) String query){
-
-        Stopwatch stopwatch = Stopwatch.createStarted();
-
-        ListenableFuture bookFuture = googleBooksService.search(query);
-        ListenableFuture albumFeature = spotifyService.search(query);
+    @RequestMapping("/service" )
+    ListenableFuture response(@RequestParam String q){
+        ListenableFuture bookFuture = googleBooksService.search(q);
+        ListenableFuture albumFeature = spotifyService.search(q);
 
         com.google.common.util.concurrent.ListenableFuture bookGuavaFuture = FutureConverter.toGuavaListenableFuture(bookFuture);
         com.google.common.util.concurrent.ListenableFuture albumGuavaFuture = FutureConverter.toGuavaListenableFuture(albumFeature);
@@ -56,28 +52,21 @@ public class ResponseController {
         futures.add(bookGuavaFuture);
         futures.add(albumGuavaFuture);
 
-        AsyncFunction<List<ResponseListDto>, ResponseListDto> mergeFunction = new AsyncFunction<List<ResponseListDto>, ResponseListDto>() {
-            @Override
-            public com.google.common.util.concurrent.ListenableFuture<ResponseListDto> apply(List<ResponseListDto> responseListDtos) throws Exception {
-                List<ResponseDto> resultResponseList = new ArrayList<>();
-                for (ResponseListDto dto: responseListDtos){
-                    //TODO better checking for nulls
-                    if (dto != null && !dto.getResponseDtoList().isEmpty()){
-                        resultResponseList.addAll(dto.getResponseDtoList());
-                    }
+        AsyncFunction<List<ResponseListDto>, ResponseListDto> mergeFunction = responseListDtos -> {
+            List<ResponseDto> resultResponseList = new ArrayList<>();
+            for (ResponseListDto dto: responseListDtos){
+                if (null != dto && null != dto.getResponseDtoList() && !dto.getResponseDtoList().isEmpty()){
+                    resultResponseList.addAll(dto.getResponseDtoList());
                 }
-                SettableFuture<ResponseListDto> future = SettableFuture.create();
-                Collections.sort(resultResponseList, Comparator.comparing(ResponseDto::getTitle));
-
-                future.set(new ResponseListDto(resultResponseList));
-                return future;
             }
+            SettableFuture<ResponseListDto> future = SettableFuture.create();
+            Collections.sort(resultResponseList, Comparator.comparing(ResponseDto::getTitle));
+
+            future.set(new ResponseListDto(resultResponseList));
+            return future;
         };
         com.google.common.util.concurrent.ListenableFuture<List<ResponseListDto>> collectedResults = Futures.successfulAsList(futures);
         com.google.common.util.concurrent.ListenableFuture<ResponseListDto> guavaResult = Futures.transformAsync(collectedResults, mergeFunction);
-
-        stopwatch.stop();
-        log.info("query: {}, elapsed: {}", new Object[] {query, stopwatch});
 
         return FutureConverter.toSpringListenableFuture(guavaResult);
     }
