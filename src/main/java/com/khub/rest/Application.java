@@ -1,5 +1,6 @@
 package com.khub.rest;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -13,6 +14,12 @@ import org.springframework.web.client.AsyncRestTemplate;
 @SpringBootApplication
 public class Application {
 
+    @Value("${timeout}") private Integer timeout;
+    @Value("${corePoolSize}") private Integer corePoolSize;
+    @Value("${maxPoolSize}") private Integer maxPoolSize;
+    @Value("${queueCapacity}") private Integer queueCapacity;
+    @Value("${threadPrefix}") private String threadPrefix;
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
@@ -20,15 +27,15 @@ public class Application {
     @Bean
     AsyncRestTemplate asyncRestTemplate(){
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(500);
-        executor.setThreadNamePrefix("micro-");
+        executor.setCorePoolSize(corePoolSize);
+        executor.setMaxPoolSize(maxPoolSize);
+        executor.setQueueCapacity(queueCapacity);
+        executor.setThreadNamePrefix(threadPrefix);
         executor.initialize();
         SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
         simpleClientHttpRequestFactory.setTaskExecutor(executor);
-        simpleClientHttpRequestFactory.setConnectTimeout(5000);
-        simpleClientHttpRequestFactory.setReadTimeout(5000);
+        simpleClientHttpRequestFactory.setConnectTimeout(timeout);
+        simpleClientHttpRequestFactory.setReadTimeout(timeout);
         return new AsyncRestTemplate(simpleClientHttpRequestFactory);
     }
 
