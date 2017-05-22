@@ -26,17 +26,7 @@ public class Application {
 
     @Bean
     AsyncRestTemplate asyncRestTemplate(){
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(corePoolSize);
-        executor.setMaxPoolSize(maxPoolSize);
-        executor.setQueueCapacity(queueCapacity);
-        executor.setThreadNamePrefix(threadPrefix);
-        executor.initialize();
-        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
-        simpleClientHttpRequestFactory.setTaskExecutor(executor);
-        simpleClientHttpRequestFactory.setConnectTimeout(timeout);
-        simpleClientHttpRequestFactory.setReadTimeout(timeout);
-        return new AsyncRestTemplate(simpleClientHttpRequestFactory);
+        return new AsyncRestTemplate(getHttpRequestFactory(getExecutor()));
     }
 
     @Bean
@@ -47,5 +37,23 @@ public class Application {
         ppc.setLocations( resources );
         ppc.setIgnoreUnresolvablePlaceholders( true );
         return ppc;
+    }
+
+    private ThreadPoolTaskExecutor getExecutor(){
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(corePoolSize);
+        executor.setMaxPoolSize(maxPoolSize);
+        executor.setQueueCapacity(queueCapacity);
+        executor.setThreadNamePrefix(threadPrefix);
+        executor.initialize();
+        return executor;
+    }
+
+    private SimpleClientHttpRequestFactory getHttpRequestFactory(ThreadPoolTaskExecutor executor){
+        SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
+        simpleClientHttpRequestFactory.setTaskExecutor(executor);
+        simpleClientHttpRequestFactory.setConnectTimeout(timeout);
+        simpleClientHttpRequestFactory.setReadTimeout(timeout);
+        return simpleClientHttpRequestFactory;
     }
 }
