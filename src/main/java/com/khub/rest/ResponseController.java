@@ -40,8 +40,8 @@ public class ResponseController {
         this.googleBooksService = googleBooksService;
     }
 
-    @RequestMapping("/service" )
-    ListenableFuture response(@RequestParam String q){
+    @RequestMapping(value = "/service")
+    ListenableFuture response(@RequestParam String q ){
         ListenableFuture bookFuture = googleBooksService.search(q);
         ListenableFuture albumFuture = spotifyService.search(q);
         try {
