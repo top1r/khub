@@ -1,7 +1,6 @@
 package com.khub.rest.spotify.service;
 
 import com.khub.rest.AppConstants;
-import com.khub.rest.ResponseController;
 import com.khub.rest.dto.ResponseListDto;
 import com.khub.rest.spotify.adapter.AlbumsResponseDtoAdapter;
 import com.khub.rest.spotify.model.Albums;
@@ -21,7 +20,7 @@ import static com.khub.rest.helpers.LoggingHelper.*;
 
 @Service
 public class SpotifyServiceImpl implements SpotifyService {
-    private static final Logger log = LoggerFactory.getLogger(ResponseController.class);
+    private static final Logger log = LoggerFactory.getLogger(SpotifyServiceImpl.class);
     private static final String CLASSNAME = SpotifyServiceImpl.class.getName();
 
     @Value( "${spotify.limit}" ) private String limit;
@@ -43,18 +42,17 @@ public class SpotifyServiceImpl implements SpotifyService {
         if (StringUtils.isEmpty(limit)){
             limit = AppConstants.DEFAULT_QUERY_LIMIT;
         }
-        ListenableFuture<ResponseEntity<Albums>> result = null;
         Long startTime = System.currentTimeMillis();
         try {
-            result = asyncRestTemplate.getForEntity(baseURL + URL, Albums.class, query, limit);
+            ListenableFuture<ResponseEntity<Albums>> result = asyncRestTemplate.getForEntity(baseURL + URL, Albums.class, query, limit);
             logSentStatistic(log, AppConstants.SPOTIFY_SERVICE_NAME, query, limit);
-
+            return new AlbumsResponseDtoAdapter(result, startTime, gaugeService);
         } catch (Exception e) {
             log.error(e.getMessage());
         }
 
         exiting(log, CLASSNAME, methodName);
-        return new AlbumsResponseDtoAdapter(result, startTime, gaugeService);
+        return null;
     }
 
 }

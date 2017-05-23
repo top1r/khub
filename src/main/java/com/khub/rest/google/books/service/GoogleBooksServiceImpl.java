@@ -1,7 +1,6 @@
 package com.khub.rest.google.books.service;
 
 import com.khub.rest.AppConstants;
-import com.khub.rest.ResponseController;
 import com.khub.rest.dto.ResponseListDto;
 import com.khub.rest.google.books.adapter.BooksResponseDtoAdapter;
 import com.khub.rest.google.books.model.Books;
@@ -21,7 +20,7 @@ import static com.khub.rest.helpers.LoggingHelper.*;
 @Service
 public class GoogleBooksServiceImpl implements GoogleBooksService{
 
-    private static final Logger log = LoggerFactory.getLogger(ResponseController.class);
+    private static final Logger log = LoggerFactory.getLogger(GoogleBooksServiceImpl.class);
     private static final String CLASSNAME = GoogleBooksServiceImpl.class.getName();
 
     @Value( "${google.books.limit}" ) private String maxResults;
@@ -41,19 +40,18 @@ public class GoogleBooksServiceImpl implements GoogleBooksService{
         String methodName = "search";
         entering(log, CLASSNAME, methodName);
 
-        ListenableFuture<ResponseEntity<Books>> result = null;
         Long startTime = System.currentTimeMillis();
 
         try {
-            result = asyncRestTemplate.getForEntity(baseURL + URL, Books.class, query, maxResults);
+            ListenableFuture<ResponseEntity<Books>> result = asyncRestTemplate.getForEntity(baseURL + URL, Books.class, query, maxResults);
             logSentStatistic(log, AppConstants.GOOGLEBOOKS_SERVICE_NAME, query, maxResults);
-
+            return new BooksResponseDtoAdapter(result, startTime, gaugeService);
         } catch (Exception e) {
             log.error(e.getMessage());
         }
 
         exiting(log, CLASSNAME, methodName);
-        return new BooksResponseDtoAdapter(result, startTime, gaugeService);
+        return null;
     }
 
 

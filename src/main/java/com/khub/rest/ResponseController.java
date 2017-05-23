@@ -43,32 +43,50 @@ public class ResponseController {
     @RequestMapping("/service" )
     ListenableFuture response(@RequestParam String q){
         ListenableFuture bookFuture = googleBooksService.search(q);
-        ListenableFuture albumFeature = spotifyService.search(q);
+        ListenableFuture albumFuture = spotifyService.search(q);
+        try {
+            com.google.common.util.concurrent.ListenableFuture bookGuavaFuture;
+            com.google.common.util.concurrent.ListenableFuture albumGuavaFuture;
+            List<com.google.common.util.concurrent.ListenableFuture<ResponseListDto>> futures = new ArrayList<com.google.common.util.concurrent.ListenableFuture<ResponseListDto>>();
 
-        com.google.common.util.concurrent.ListenableFuture bookGuavaFuture = FutureConverter.toGuavaListenableFuture(bookFuture);
-        com.google.common.util.concurrent.ListenableFuture albumGuavaFuture = FutureConverter.toGuavaListenableFuture(albumFeature);
+            if (null != bookFuture) {
+                bookGuavaFuture = FutureConverter.toGuavaListenableFuture(bookFuture);
+                if (null != bookGuavaFuture) {
+                    futures.add(bookGuavaFuture);
+                }
 
-        List<com.google.common.util.concurrent.ListenableFuture<ResponseListDto>> futures = new ArrayList<com.google.common.util.concurrent.ListenableFuture<ResponseListDto>>();
-        futures.add(bookGuavaFuture);
-        futures.add(albumGuavaFuture);
-
-        AsyncFunction<List<ResponseListDto>, ResponseListDto> mergeFunction = responseListDtos -> {
-            List<ResponseDto> resultResponseList = new ArrayList<>();
-            for (ResponseListDto dto: responseListDtos){
-                if (null != dto && null != dto.getResponseDtoList() && !dto.getResponseDtoList().isEmpty()){
-                    resultResponseList.addAll(dto.getResponseDtoList());
+            }
+            if (null != albumFuture) {
+                albumGuavaFuture = FutureConverter.toGuavaListenableFuture(albumFuture);
+                if (null != albumGuavaFuture) {
+                    futures.add(albumGuavaFuture);
                 }
             }
-            SettableFuture<ResponseListDto> future = SettableFuture.create();
-            Collections.sort(resultResponseList, Comparator.comparing(ResponseDto::getTitle));
 
-            future.set(new ResponseListDto(resultResponseList));
-            return future;
-        };
-        com.google.common.util.concurrent.ListenableFuture<List<ResponseListDto>> collectedResults = Futures.successfulAsList(futures);
-        com.google.common.util.concurrent.ListenableFuture<ResponseListDto> guavaResult = Futures.transformAsync(collectedResults, mergeFunction);
+            AsyncFunction<List<ResponseListDto>, ResponseListDto> mergeFunction = responseListDtos -> {
+                List<ResponseDto> resultResponseList = new ArrayList<>();
+                if (responseListDtos != null) {
+                    for (ResponseListDto dto: responseListDtos){
+                        if (null != dto && null != dto.getResponseDtoList() && !dto.getResponseDtoList().isEmpty()){
+                            resultResponseList.addAll(dto.getResponseDtoList());
+                        }
+                    }
+                }
+                SettableFuture<ResponseListDto> future = SettableFuture.create();
+                Collections.sort(resultResponseList, Comparator.comparing(ResponseDto::getTitle));
 
-        return FutureConverter.toSpringListenableFuture(guavaResult);
+                future.set(new ResponseListDto(resultResponseList));
+                return future;
+            };
+            com.google.common.util.concurrent.ListenableFuture<List<ResponseListDto>> collectedResults = Futures.successfulAsList(futures);
+            com.google.common.util.concurrent.ListenableFuture<ResponseListDto> guavaResult = Futures.transformAsync(collectedResults, mergeFunction);
+
+            return FutureConverter.toSpringListenableFuture(guavaResult);
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+        return null;
+
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
